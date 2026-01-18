@@ -3,83 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>お絵かきクイズ - ポータル</title>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <title>お絵かきクイズ</title>
     <style>
-        body { background: #0047AB; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; flex-direction: column; }
+        body { background: #0047AB; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .box { background: rgba(255,255,255,0.2); padding: 40px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid rgba(255,255,255,0.3); }
-        h1 { margin-bottom: 30px; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .btn { width: 100%; padding: 20px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin: 10px 0; font-size: 22px; transition: 0.2s; text-decoration: none; display: block; box-sizing: border-box; }
-        
-        /* 部屋に入る（青緑系） */
+        .btn { width: 100%; padding: 20px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin: 10px 0; font-size: 22px; text-decoration: none; display: block; box-sizing: border-box; }
         .btn-join { background: #2ed573; color: white; }
-        .btn-join:active { background: #26af5f; transform: translateY(2px); }
-        
-        /* 部屋を作る（ゴールド系） */
         .btn-host { background: #ffcc00; color: #333; }
-        .btn-host:active { background: #e6b800; transform: translateY(2px); }
-
-        .footer { margin-top: 20px; font-size: 12px; opacity: 0.7; }
     </style>
 </head>
 <body>
-
 <div class="box">
     <h1>🎨 お絵かきクイズ</h1>
-    
     <a href="join.html" class="btn btn-join">あそびにいく</a>
-    
     <button class="btn btn-host" onclick="createRoom()">へやをつくる</button>
 </div>
 
-<div class="footer">お絵かきクイズ v2.0</div>
-
 <script>
-    // --- Firebase設定（すべてのファイルで共通のものを使ってください） ---
-    const config = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_ID",
-        appId: "YOUR_APP_ID"
-    };
-    firebase.initializeApp(config);
-    const db = firebase.database();
-
-    async function createRoom() {
-        const name = prompt("あなたのなまえをいれてね");
-        if(!name) return;
-
-        // 4ケタの部屋番号をランダム作成
+    function createRoom() {
         const roomID = Math.floor(1000 + Math.random() * 9000);
-        // ホスト用の簡易UIDを作成
-        const uid = "h-" + Math.random().toString(36).substring(2, 7);
-        
-        // データベースに部屋を初期化
-        await db.ref(`rooms/${roomID}`).set({
-            state: { 
-                phase: 'setup', 
-                currentIndex: 0,
-                timer: 60
-            },
-            users: {
-                [uid]: { 
-                    name: name + "(ホスト)", 
-                    score: 0, 
-                    image: "" 
-                }
-            }
-        });
-
-        // 情報を保存して設定画面（host.html）へ
         sessionStorage.setItem('quiz_room', roomID);
-        sessionStorage.setItem('quiz_uid', uid);
-        sessionStorage.setItem('quiz_name', name);
-        
-        location.href = 'host.html';
+        location.href = 'host.html'; // 名前は次で入力
     }
 </script>
 </body>
