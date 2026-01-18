@@ -7,20 +7,49 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { background: #0047AB; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; flex-direction: column; }
-        .box { background: rgba(255,255,255,0.2); padding: 25px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid rgba(255,255,255,0.3); }
-        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: none; box-sizing: border-box; font-size: 18px; }
-        button { width: 100%; padding: 15px; border-radius: 10px; border: none; background: #FFD700; color: #333; font-weight: bold; font-size: 18px; cursor: pointer; }
+        body { 
+            background: #0047AB; color: white; font-family: sans-serif; 
+            display: flex; align-items: center; justify-content: center; 
+            min-height: 100vh; margin: 0; flex-direction: column; 
+        }
+        .box { 
+            background: rgba(255,255,255,0.2); padding: 25px; border-radius: 20px; 
+            width: 350px; text-align: center; border: 1px solid rgba(255,255,255,0.3); 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        h2 { margin-top: 0; margin-bottom: 20px; font-size: 24px; }
+        input { 
+            width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; 
+            border: 2px solid transparent; box-sizing: border-box; font-size: 18px; 
+            background: white; color: #333;
+            /* iOSでの入力欄の影を消す */
+            -webkit-appearance: none;
+        }
+        input:focus {
+            border: 2px solid #FFD700;
+            outline: none;
+        }
+        button { 
+            width: 100%; padding: 15px; border-radius: 10px; border: none; 
+            background: #FFD700; color: #333; font-weight: bold; font-size: 18px; 
+            cursor: pointer; margin-top: 10px;
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .back-link { margin-top: 20px; color: white; text-decoration: none; font-size: 14px; opacity: 0.8; }
     </style>
 </head>
 <body>
+
     <div class="box">
         <h2>クイズに参加</h2>
-        <input type="number" id="roomID" placeholder="部屋番号 (4ケタ)" inputmode="numeric">
-        <input type="text" id="userName" placeholder="なまえをいれてね">
+        <input type="tel" id="roomID" placeholder="部屋番号 (4ケタ)" autocomplete="off" inputmode="numeric">
+        <input type="text" id="userName" placeholder="なまえをいれてね" autocomplete="off">
         <button id="enterBtn" onclick="enter()">ゲームに入る</button>
     </div>
-    <a href="index.html" style="margin-top:20px; color:white;">もどる</a>
+
+    <a href="index.html" class="back-link">← もどる</a>
 
     <script>
         const firebaseConfig = {
@@ -33,9 +62,15 @@
         const db = firebase.database();
 
         async function enter() {
-            const room = document.getElementById('roomID').value.trim();
-            const name = document.getElementById('userName').value.trim();
-            if(!room || !name) return alert('部屋番号となまえを入れてね');
+            const roomIDInput = document.getElementById('roomID');
+            const userNameInput = document.getElementById('userName');
+            const room = roomIDInput.value.trim();
+            const name = userNameInput.value.trim();
+
+            if(!room || !name) {
+                alert('部屋番号となまえを入れてね');
+                return;
+            }
 
             const btn = document.getElementById('enterBtn');
             btn.disabled = true;
@@ -52,22 +87,37 @@
                 }
 
                 const uid = "user_" + Math.random().toString(36).substring(2, 9);
+                
+                // ユーザー登録
                 await db.ref(`rooms/${room}/users/${uid}`).set({
                     name: name,
                     score: 0,
+                    isCorrect: false,
                     image: ""
                 });
 
+                // セッションに保存
                 sessionStorage.setItem('quiz_room', room);
                 sessionStorage.setItem('quiz_uid', uid);
                 sessionStorage.setItem('quiz_name', name);
+
+                // プレイ画面へ
                 location.href = 'student.html';
+
             } catch(e) {
-                alert("エラー: " + e.message);
+                console.error(e);
+                alert("エラーが発生しました。通信環境を確認してね。");
                 btn.disabled = false;
                 btn.innerText = "ゲームに入る";
             }
         }
+
+        // エンターキーでも送信できるようにする（PC用）
+        document.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                enter();
+            }
+        });
     </script>
 </body>
 </html>
