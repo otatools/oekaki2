@@ -8,128 +8,71 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="odai-list.js"></script>
     <style>
-        /* 画面全体の設定 */
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
+        body {
             background: #0047AB;
             font-family: sans-serif;
+            margin: 0;
+            padding: 20px 0; /* 上下に余白 */
+            display: flex;
+            justify-content: center;
+            color: white;
         }
 
-        body { 
-            display: flex; 
-            align-items: center;    /* 上下中央 */
-            justify-content: center; /* 左右中央 */
-        }
-
-        /* 以前の index.html などの雰囲気に合わせたボックス */
         .container { 
             background: rgba(255,255,255,0.2); 
-            padding: 25px; 
-            border-radius: 20px; 
-            width: 350px; 
-            max-width: 90%;
+            padding: 30px; 
+            border-radius: 25px; 
+            width: 500px; /* 横幅を広げました */
+            max-width: 95%;
             text-align: center; 
             border: 1px solid rgba(255,255,255,0.3);
             box-sizing: border-box;
-            color: white;
-            max-height: 95vh;
-            overflow-y: auto;
         }
 
-        .room-no { 
-            font-size: 40px; 
-            font-weight: bold; 
-            color: #ffcc00; 
-            margin: 10px 0;
-        }
+        /* 部屋番号表示 */
+        .room-no { font-size: 48px; font-weight: bold; color: #ffcc00; margin-bottom: 20px; }
         
-        .section-title { 
-            font-size: 16px; 
-            margin: 15px 0 8px 0; 
-            font-weight: bold;
-            text-align: left;
-        }
+        /* 名前入力欄 */
+        .name-input-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 15px; margin-bottom: 20px; }
+        .name-input-box input { width: 90%; padding: 12px; border-radius: 10px; border: none; font-size: 20px; text-align: center; font-weight: bold; }
 
-        .button-group { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 10px; 
-        }
+        .section-title { font-size: 18px; margin: 20px 0 10px 0; font-weight: bold; text-align: left; border-left: 5px solid #ffcc00; padding-left: 10px; }
+
+        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
 
         .btn-opt { 
-            background: rgba(255,255,255,0.3); 
-            border: none; 
-            color: white; 
-            padding: 12px 5px; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            font-size: 18px; 
-            font-weight: bold;
-            transition: 0.2s;
+            background: rgba(255,255,255,0.3); border: none; color: white; padding: 15px 5px; 
+            border-radius: 12px; cursor: pointer; font-size: 20px; font-weight: bold; transition: 0.2s;
         }
-        .btn-opt.active { 
-            background: #fff; 
-            color: #0047AB; 
-        }
+        .btn-opt.active { background: #fff; color: #0047AB; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         
-        .input-inline { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 10px; 
-            margin-top: 5px; 
-        }
-        .input-inline input { 
-            width: 80px; 
-            padding: 10px; 
-            border-radius: 10px; 
-            border: none; 
-            text-align: center; 
-            font-size: 24px; 
-            font-weight: bold;
-        }
-        .cond-text { font-size: 20px; }
+        .input-inline { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 10px; }
+        .input-inline input { width: 100px; padding: 12px; border-radius: 12px; border: none; text-align: center; font-size: 28px; font-weight: bold; }
+        .cond-text { font-size: 22px; }
 
-        .member-card { 
-            background: rgba(0,0,0,0.1); 
-            padding: 10px; 
-            border-radius: 15px; 
-            margin-top: 15px; 
-            text-align: left;
-        }
-        .member-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-        .member-chip { 
-            background: #ffcc00; 
-            color: #333; 
-            padding: 5px 12px; 
-            border-radius: 20px; 
-            font-size: 14px; 
-            font-weight: bold; 
-        }
+        .member-card { background: rgba(0,0,0,0.1); padding: 20px; border-radius: 20px; margin-top: 25px; text-align: left; }
+        .member-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .member-chip { background: #ffcc00; color: #333; padding: 8px 16px; border-radius: 25px; font-size: 16px; font-weight: bold; }
 
         .btn-start { 
-            background: #ff4757; 
-            color: white; 
-            padding: 15px; 
-            width: 100%; 
-            border: none; 
-            border-radius: 12px; 
-            font-size: 24px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            margin-top: 20px; 
+            background: #ff4757; color: white; padding: 20px; width: 100%; border: none; 
+            border-radius: 15px; font-size: 28px; font-weight: bold; cursor: pointer; margin-top: 30px;
+            box-shadow: 0 6px 0 #b3313d;
         }
-        .btn-start:active { transform: translateY(2px); }
+        .btn-start:active { transform: translateY(3px); box-shadow: 0 2px 0 #b3313d; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div style="font-size: 14px; opacity: 0.8;">部屋番号</div>
+    <div style="font-size: 16px; opacity: 0.8;">部屋番号</div>
     <div class="room-no" id="roomDisplay">----</div>
+
+    <div class="name-input-box">
+        <div style="font-size: 14px; margin-bottom: 8px;">あなたのなまえ</div>
+        <input type="text" id="hostName" placeholder="なまえを入力してね">
+    </div>
 
     <div class="section-title">ゲームモード</div>
     <div class="button-group" id="modeGroup">
@@ -148,11 +91,11 @@
         <span id="condUnit" class="cond-text">分</span>
     </div>
 
-    <div class="section-title">お題</div>
+    <div class="section-title">お題のカテゴリ</div>
     <div id="categoryGroup" class="button-group grid-3"></div>
 
     <div class="member-card">
-        <div style="font-size: 14px;">参加：<span id="count">0</span>人</div>
+        <div style="font-size: 16px; font-weight: bold;">参加している人：<span id="count">0</span>人</div>
         <div id="memberNames" class="member-list"></div>
     </div>
 
@@ -160,32 +103,17 @@
 </div>
 
 <script>
-    // --- Firebase設定（ご自身のものに書き換えてください） ---
-    const config = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "YOUR_ID",
-        appId: "YOUR_APP_ID"
-    };
+    // Firebase設定を貼り付け
+    const config = { /* ... */ };
     firebase.initializeApp(config);
     const db = firebase.database();
 
-    // 部屋情報
     const roomID = sessionStorage.getItem('quiz_room');
-    const myUid = sessionStorage.getItem('quiz_uid');
     document.getElementById('roomDisplay').innerText = roomID;
 
-    // 設定初期値
-    let settings = {
-        mode: 'battle',
-        condition: 'timeLimit',
-        category: 'すべて'
-    };
+    let settings = { mode: 'battle', condition: 'timeLimit', category: 'すべて' };
 
-    // --- お題カテゴリボタンを odai-list.js から生成 ---
+    // カテゴリボタン生成
     const catGroup = document.getElementById('categoryGroup');
     if (typeof odaiData !== 'undefined') {
         Object.keys(odaiData).forEach(cat => {
@@ -197,38 +125,19 @@
         });
     }
 
-    // --- UI切り替え関数 ---
-
-    function setMode(val, btn) {
-        settings.mode = val;
-        toggleActive('modeGroup', btn);
+    function setMode(v, b) { settings.mode = v; toggleActive('modeGroup', b); }
+    function setCondition(v, b) {
+        settings.condition = v;
+        toggleActive('condGroup', b);
+        document.getElementById('condUnit').innerText = (v === 'timeLimit' ? "分" : "問");
+    }
+    function setCategory(v, b) { settings.category = v; toggleActive('categoryGroup', b); }
+    function toggleActive(id, b) {
+        document.getElementById(id).querySelectorAll('.btn-opt').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
     }
 
-    function setCondition(val, btn) {
-        settings.condition = val;
-        toggleActive('condGroup', btn);
-        const unit = document.getElementById('condUnit');
-        const input = document.getElementById('condValue');
-        if (val === 'timeLimit') {
-            unit.innerText = "分";
-            input.value = "5";
-        } else {
-            unit.innerText = "問";
-            input.value = "10";
-        }
-    }
-
-    function setCategory(val, btn) {
-        settings.category = val;
-        toggleActive('categoryGroup', btn);
-    }
-
-    function toggleActive(groupId, btn) {
-        document.getElementById(groupId).querySelectorAll('.btn-opt').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-    }
-
-    // --- 参加者のリアルタイム監視 ---
+    // 参加者監視
     db.ref(`rooms/${roomID}/users`).on('value', snap => {
         const users = snap.val() || {};
         const listDiv = document.getElementById('memberNames');
@@ -243,93 +152,33 @@
         });
     });
 
-    // --- ゲーム開始 & 自動進行マネージャー ---
-
-    let gameTimer = null;
-
-    function startGame() {
+    async function startGame() {
+        const name = document.getElementById('hostName').value;
+        if(!name) return alert("あなたのなまえを入れてね！");
+        
         const condVal = document.getElementById('condValue').value;
-        if (!condVal || condVal <= 0) return alert("数字をいれてね！");
+        const uid = "h-" + Date.now().toString(36);
+        
+        // ホスト自身をユーザー登録
+        await db.ref(`rooms/${roomID}/users/${uid}`).set({ name: name + "(ホスト)", score: 0, image: "" });
+        sessionStorage.setItem('quiz_uid', uid);
+        sessionStorage.setItem('quiz_name', name);
 
-        const firstOdai = getRandomOdai(settings.category);
-
-        // Firebaseに初期状態を書き込み
-        db.ref(`rooms/${roomID}/state`).update({
+        // ゲーム状態を更新
+        await db.ref(`rooms/${roomID}/state`).update({
             phase: 'playing',
             mode: settings.mode,
             condition: settings.condition,
             conditionValue: parseInt(condVal),
             category: settings.category,
             currentIndex: 0,
-            odai: firstOdai,
+            odai: odaiData[settings.category][0],
             startTime: firebase.database.ServerValue.TIMESTAMP,
             totalSolved: 0,
-            timer: 60 // 各ターンの秒数
+            timer: 60
         });
 
-        // 管理ループを開始
-        runManager();
-        
-        // ホストも一緒に遊ぶために play.html へ移動
-        setTimeout(() => {
-            location.href = 'play.html';
-        }, 500);
-    }
-
-    function runManager() {
-        // 1秒ごとにホストのブラウザが状況をチェック
-        gameTimer = setInterval(async () => {
-            const snap = await db.ref(`rooms/${roomID}`).get();
-            const data = snap.val();
-            if (!data || data.state.phase !== 'playing') return;
-
-            let { currentIndex, timer, totalSolved, startTime, condition, conditionValue } = data.state;
-            const users = data.users;
-            const userKeys = Object.keys(users).sort();
-
-            // 終了判定
-            let isOver = false;
-            if (condition === 'timeLimit') {
-                // サーバー時間との差分で計算（簡易版）
-                const elapsedMin = (Date.now() - startTime) / 60000;
-                if (elapsedMin >= conditionValue) isOver = true;
-            } else {
-                if (totalSolved >= conditionValue) isOver = true;
-            }
-
-            if (isOver) {
-                clearInterval(gameTimer);
-                db.ref(`rooms/${roomID}/state/phase`).set('result');
-                return;
-            }
-
-            // ターン時間減少
-            timer--;
-            if (timer <= 0) {
-                // 時間切れ: 次の人へ
-                timer = 60;
-                currentIndex++;
-                const nextOdai = getRandomOdai(data.state.category);
-                
-                db.ref(`rooms/${roomID}/state`).update({
-                    currentIndex: currentIndex,
-                    timer: timer,
-                    odai: nextOdai
-                });
-                
-                // 全員の描画をリセット
-                userKeys.forEach(uid => {
-                    db.ref(`rooms/${roomID}/users/${uid}/image`).set("");
-                });
-            } else {
-                db.ref(`rooms/${roomID}/state/timer`).set(timer);
-            }
-        }, 1000);
-    }
-
-    function getRandomOdai(cat) {
-        const list = odaiData[cat] || odaiData["すべて"];
-        return list[Math.floor(Math.random() * list.length)];
+        location.href = 'play.html';
     }
 </script>
 </body>
