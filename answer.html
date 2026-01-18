@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>クイズに参加 - oekaki2game</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        body { background: #0047AB; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; flex-direction: column; }
+        .box { background: rgba(255,255,255,0.2); padding: 25px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid rgba(255,255,255,0.3); }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: none; box-sizing: border-box; font-size: 18px; }
+        button { width: 100%; padding: 15px; border-radius: 10px; border: none; background: #FFD700; color: #333; font-weight: bold; font-size: 18px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>クイズに参加</h2>
+        <input type="number" id="roomID" placeholder="部屋番号 (4ケタ)" inputmode="numeric">
+        <input type="text" id="userName" placeholder="なまえをいれてね">
+        <button id="enterBtn" onclick="enter()">ゲームに入る</button>
+    </div>
+    <a href="index.html" style="margin-top:20px; color:white;">もどる</a>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxKeGt8RzLF5sV7fWxKuWsoETmG6fMtxw",
+            authDomain: "oekaki2game.firebaseapp.com",
+            databaseURL: "https://oekaki2game-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "oekaki2game"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        async function enter() {
+            const room = document.getElementById('roomID').value.trim();
+            const name = document.getElementById('userName').value.trim();
+            if(!room || !name) return alert('部屋番号となまえを入れてね');
+
+            const btn = document.getElementById('enterBtn');
+            btn.disabled = true;
+            btn.innerText = "チェック中...";
+
+            try {
+                // 部屋の state があるか確認
+                const snap = await db.ref(`rooms/${room}/state`).get();
+                if(!snap.exists()) {
+                    alert("その部屋（" + room + "）はまだ作られていないよ。\n先生に番号を確認するか、先生が作成ボタンを押すのを待ってね。");
+                    btn.disabled = false;
+                    btn.innerText = "ゲームに入る";
+                    return;
+                }
+
+                const uid = "user_" + Math.random().toString(36).substring(2, 9);
+                await db.ref(`rooms/${room}/users/${uid}`).set({
+                    name: name,
+                    score: 0,
+                    image: ""
+                });
+
+                sessionStorage.setItem('quiz_room', room);
+                sessionStorage.setItem('quiz_uid', uid);
+                sessionStorage.setItem('quiz_name', name);
+                location.href = 'student.html';
+            } catch(e) {
+                alert("エラー: " + e.message);
+                btn.disabled = false;
+                btn.innerText = "ゲームに入る";
+            }
+        }
+    </script>
+</body>
+</html>

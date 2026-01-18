@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>お絵かきクイズ - プレイ画面 (Ver 3.8)</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="odai-list.js"></script>
+    <style>
+        /* 画面全体のレイアウト固定 */
+        body { 
+            margin: 0; background: #222; color: white; font-family: sans-serif; 
+            height: 100vh; height: 100dvh;
+            display: flex; flex-direction: column; overflow: hidden;
+            touch-action: none; 
+        }
+        
+        /* ヘッダー周り */
+        #infoBar { background: #333; padding: 5px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #555; flex-shrink: 0; }
+        #odaiDisplay { background: #FFD700; color: #000; padding: 8px; text-align: center; font-weight: bold; font-size: 20px; display: none; flex-shrink: 0; }
+        .status-msg { padding: 4px; text-align: center; font-size: 14px; min-height: 20px; color: #FFD700; flex-shrink: 0; }
+
+        /* キャンバスエリア（画面が小さい時は縮小する） */
+        #stage { 
+            flex: 1; position: relative; background: #444; 
+            display: flex; align-items: center; justify-content: center; 
+            min-height: 0; padding: 5px;
+        }
+        #canvasBox { 
+            position: relative; 
+            width: 100%; height: 100%;
+            max-width: 800px; max-height: 600px;
+            aspect-ratio: 4 / 3;
+            background: white; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+        }
+        canvas, #sharedImg { 
+            position: absolute; top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            display: block;
+        }
+
+        /* ゴミ箱ボタン */
+        #clearBtn {
+            position: fixed; bottom: 100px; right: 20px;
+            width: 50px; height: 50px; background: #ff4444; color: white;
+            border-radius: 50%; border: 3px solid white; font-size: 24px;
+            display: none; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 200; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        /* ツールエリア */
+        .tools-container {
+            background: #333; border-top: 2px solid #555; padding: 10px;
+            display: none; flex-direction: column; gap: 8px; flex-shrink: 0;
+            z-index: 100;
+        }
+        
+        .palette { 
+            display: flex; flex-wrap: nowrap; justify-content: center; gap: 6px; 
+            width: 100%; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .color-dot { 
+            width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,0.3); cursor: pointer;
+        }
+        .color-dot.active { transform: scale(1.1); border-color: white; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
+        
+        .control-row { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 5px; }
+        
+        /* ペンのサイズボタン */
+        .size-btn {
+            background: #444; border: 1px solid #666; color: white;
+            padding: 5px 10px; border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; min-width: 50px;
+        }
+        .size-btn.active { background: #666; border-color: #FFD700; }
+        .size-mark { background: #FFD700; border-radius: 50%; display: inline-block; }
+        
+        .eraser-btn {
+            background: #eee; color: #333; padding: 8px 15px; border-radius: 8px;
+            border: none; font-weight: bold; cursor: pointer; margin-left: 10px;
+        }
+        .eraser-btn.active { background: #FFD700; }
+
+        /* 回答エリア */
+        .answer-box { background: #333; padding: 15px; text-align: center; display: none; flex-shrink: 0; border-top: 2px solid #555; }
+        #myAnswer { padding: 12px; font-size: 18px; border-radius: 8px; width: 60%; border: none; }
+
+        /* オーバーレイ系 */
+        #resultOverlay { position: fixed; inset: 0; background: #FFD700; color: #333; z-index: 3000; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        #waitingScreen { position: fixed; inset: 0; background: #0047AB; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="resultOverlay">
+    <p style="font-size: 24px;">正解は...</p>
+    <h2 id="correctWordDisp" style="font-size: 50px; margin: 10px 0;">？？？</h2>
+    <p id="winnerDisp" style="font-size: 30px;">正解者：なし</p>
+</div>
+
+<div id="waitingScreen">
+    <div style="font-size: 32px; font-weight: bold; background: #FFD700; color: #333; padding: 10px 30px; border-radius: 15px; margin-bottom: 20px;" id="dispRoomNum">部屋番号: ----</div>
+    <div id="memberList" style="margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: center;"></div>
+    <div id="hostControls" style="display: none;">
+        <button onclick="startFirstGame()" style="background: #FFD700; color: #333; padding: 15px 40px; border-radius: 10px; border: none; font-size: 24px; font-weight: bold;">ゲームスタート！</button>
+    </div>
+</div>
+
+<div id="infoBar">
+    <div id="scoreDisplay">スコア: 0</div>
+    <div style="font-weight: bold; color: #FFD700; font-size: 20px;">⏱ <span id="timeLeft">--</span></div>
+    <div>部屋: <span id="displayRoom">...</span></div>
+</div>
+<div id="odaiDisplay">お題：<span id="word">？</span></div>
+<div class="status-msg" id="statusMsg"></div>
+
+<div id="stage">
+    <div id="canvasBox">
+        <canvas id="mainCanvas"></canvas>
+        <img id="sharedImg">
+    </div>
+</div>
+
+<div id="clearBtn" onclick="clearCanvas()">🗑️</div>
+
+<div class="tools-container" id="drawTools">
+    <div class="palette" id="colorPalette"></div>
+    <div class="control-row">
+        <button class="size-btn" onclick="setLineWidth(4, this)">
+            <span class="size-mark" style="width:6px; height:6px;"></span>
+        </button>
+        <button class="size-btn active" onclick="setLineWidth(12, this)">
+            <span class="size-mark" style="width:12px; height:12px;"></span>
+        </button>
+        <button class="size-btn" onclick="setLineWidth(25, this)">
+            <span class="size-mark" style="width:25px; height:25px;"></span>
+        </button>
+        <button class="eraser-btn" id="eraserBtn" onclick="toggleEraser()">消しゴム</button>
+    </div>
+</div>
+
+<div class="answer-box" id="answerArea">
+    <input type="text" id="myAnswer" placeholder="答えを入力..." autocomplete="off">
+    <button onclick="checkAnswer()" style="background:#FFD700; color:#333; padding:12px 20px; border:none; border-radius:8px; font-weight:bold;">決定</button>
+</div>
+
+<script>
+    // --- Firebase設定 ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAxKeGt8RzLF5sV7fWxKuWsoETmG6fMtxw",
+        authDomain: "oekaki2game.firebaseapp.com",
+        databaseURL: "https://oekaki2game-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "oekaki2game"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const myRoom = sessionStorage.getItem('quiz_room');
+    const myUid = sessionStorage.getItem('quiz_uid');
+    const myName = sessionStorage.getItem('quiz_name');
+
+    if(!myRoom || !myUid) { location.href = "index.html"; }
+    
+    document.getElementById('displayRoom').innerText = myRoom;
+    document.getElementById('dispRoomNum').innerText = "部屋番号: " + myRoom;
+
+    let isDrawer = false;
+    let currentWord = "";
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+    let penColor = "#000000";
+    let lastSelectedColor = "#000000"; 
+    let lineWidth = 12;
+    let isEraser = false;
+    let lastUploadTime = 0;
+    let timerInterval = null;
+
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 800; canvas.height = 600;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // パレット生成
+    const colors = ['#000000', '#808080', '#ffffff', '#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#8b4513', '#800080', '#ffc0cb'];
+    const paletteDiv = document.getElementById('colorPalette');
+    colors.forEach(c => {
+        const dot = document.createElement('div');
+        dot.className = 'color-dot' + (c === '#000000' ? ' active' : '');
+        dot.style.background = c;
+        dot.onclick = () => setColor(c, dot);
+        paletteDiv.appendChild(dot);
+    });
+
+    function setColor(c, el) {
+        isEraser = false;
+        document.getElementById('eraserBtn').classList.remove('active');
+        penColor = c; lastSelectedColor = c;
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        if(el) el.classList.add('active');
+        // サイズボタンの中の●の色も変える
+        document.querySelectorAll('.size-mark').forEach(m => m.style.background = c);
+    }
+
+    function toggleEraser() {
+        isEraser = !isEraser;
+        const btn = document.getElementById('eraserBtn');
+        if(isEraser) {
+            btn.classList.add('active'); penColor = "#ffffff";
+            document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        } else {
+            btn.classList.remove('active'); penColor = lastSelectedColor;
+            // パレットの色を再選択状態にする（簡易）
+            const dots = document.querySelectorAll('.color-dot');
+            dots.forEach(d => { if(d.style.backgroundColor === lastSelectedColor) d.classList.add('active'); });
+        }
+    }
+
+    function setLineWidth(w, el) {
+        lineWidth = w;
+        document.querySelectorAll('.size-btn').forEach(d => d.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function clearCanvas() {
+        ctx.clearRect(0,0,800,600);
+        if(isDrawer) uploadImage();
+    }
+
+    function uploadImage() {
+        if(!isDrawer) return;
+        const dataUrl = canvas.toDataURL('image/webp', 0.3);
+        db.ref(`rooms/${myRoom}/users/${myUid}`).update({ image: dataUrl });
+    }
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = (e.touches && e.touches[0]) ? e.touches[0].clientX : e.clientX;
+        const clientY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * (canvas.width / rect.width),
+            y: (clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+
+    function draw(e) {
+        if(!isDrawing || !isDrawer) return;
+        const pos = getPos(e);
+        ctx.strokeStyle = penColor; 
+        ctx.lineWidth = lineWidth;
+        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke();
+        lastX = pos.x; lastY = pos.y;
+        
+        const now = Date.now();
+        if(now - lastUploadTime > 200) {
+            uploadImage();
+            lastUploadTime = now;
+        }
+        if(e.cancelable) e.preventDefault();
+    }
+
+    canvas.addEventListener('mousedown', e => { if(!isDrawer) return; isDrawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; });
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', () => { if(isDrawing) { isDrawing = false; uploadImage(); } });
+
+    canvas.addEventListener('touchstart', e => { if(!isDrawer) return; isDrawing = true; const p = getPos(e); lastX = p.x; lastY = p.y; }, {passive:false});
+    canvas.addEventListener('touchmove', draw, {passive:false});
+    window.addEventListener('touchend', () => { if(isDrawing) { isDrawing = false; uploadImage(); } });
+
+    // --- 状態監視 ---
+    db.ref(`rooms/${myRoom}/state`).on('value', snap => {
+        const state = snap.val();
+        if(!state) return;
+
+        // 次の画面へ移る際などにキャンバスをクリア
+        if(state.phase !== 'drawing') {
+            ctx.clearRect(0, 0, 800, 600);
+        }
+
+        isDrawer = (state.drawerUid === myUid);
+        currentWord = state.currentWord;
+        
+        document.getElementById('waitingScreen').style.display = (state.phase === 'waiting') ? 'flex' : 'none';
+        document.getElementById('hostControls').style.display = (state.hostUid === myUid && state.phase === 'waiting') ? 'block' : 'none';
+        document.getElementById('timeLeft').innerText = state.timer || 0;
+
+        if(state.phase === 'result') {
+            document.getElementById('resultOverlay').style.display = 'flex';
+            document.getElementById('correctWordDisp').innerText = state.currentWord;
+            document.getElementById('winnerDisp').innerText = state.lastWinner ? "正解者：" + state.lastWinner : "正解者：なし";
+        } else {
+            document.getElementById('resultOverlay').style.display = 'none';
+        }
+
+        // ホストのみカウントダウンを実行
+        if (state.hostUid === myUid && state.phase === 'drawing') {
+            startHostTimer();
+        } else {
+            stopHostTimer();
+        }
+
+        updateUI(state);
+    });
+
+    // ホスト用タイマー
+    function startHostTimer() {
+        if (timerInterval) return;
+        timerInterval = setInterval(async () => {
+            const snap = await db.ref(`rooms/${myRoom}/state/timer`).get();
+            let t = snap.val();
+            if (t > 0) {
+                db.ref(`rooms/${myRoom}/state/timer`).set(t - 1);
+            } else {
+                // 時間切れ
+                db.ref(`rooms/${myRoom}/state`).update({ phase: 'result', lastWinner: "時間切れ" });
+                setTimeout(nextGame, 4000);
+                stopHostTimer();
+            }
+        }, 1000);
+    }
+    function stopHostTimer() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+
+    function updateUI(state) {
+        const drawTools = document.getElementById('drawTools');
+        const clearBtn = document.getElementById('clearBtn');
+        const answerArea = document.getElementById('answerArea');
+        const odaiDisplay = document.getElementById('odaiDisplay');
+        const sharedImg = document.getElementById('sharedImg');
+
+        if(state.phase === 'drawing') {
+            if(isDrawer) {
+                document.getElementById('statusMsg').innerText = "★ あなたが描く番です！ ★";
+                drawTools.style.display = 'flex';
+                clearBtn.style.display = 'flex';
+                answerArea.style.display = 'none';
+                odaiDisplay.style.display = 'block';
+                document.getElementById('word').innerText = currentWord;
+                sharedImg.style.display = 'none';
+                canvas.style.pointerEvents = 'auto';
+            } else {
+                document.getElementById('statusMsg').innerText = "だれかが描いています...";
+                drawTools.style.display = 'none';
+                clearBtn.style.display = 'none';
+                answerArea.style.display = 'block';
+                odaiDisplay.style.display = 'none';
+                sharedImg.style.display = 'block';
+                canvas.style.pointerEvents = 'none';
+                db.ref(`rooms/${myRoom}/users/${state.drawerUid}/image`).on('value', img => {
+                    sharedImg.src = img.val() || "";
+                });
+            }
+        }
+    }
+
+    db.ref(`rooms/${myRoom}/users`).on('value', snap => {
+        const users = snap.val() || {};
+        const listDiv = document.getElementById('memberList');
+        listDiv.innerHTML = "";
+        Object.values(users).forEach(u => {
+            const span = document.createElement('span');
+            span.style.cssText = "background:white; color:#0047AB; padding:5px 15px; border-radius:20px; margin:5px; font-weight:bold;";
+            span.innerText = u.name;
+            listDiv.appendChild(span);
+        });
+        // 自分のスコア反映
+        if(users[myUid]) document.getElementById('scoreDisplay').innerText = "スコア: " + (users[myUid].score || 0);
+    });
+
+    async function startFirstGame() { nextGame(); }
+    async function nextGame() {
+        const snap = await db.ref(`rooms/${myRoom}`).get();
+        const data = snap.val();
+        const uids = Object.keys(data.users).sort(); 
+        let nextIndex = 0;
+        if(data.state && data.state.drawerUid) {
+            nextIndex = (uids.indexOf(data.state.drawerUid) + 1) % uids.length;
+        }
+        const wordList = odaiData["すべて"];
+        const word = wordList[Math.floor(Math.random() * wordList.length)];
+        
+        for(let uid in data.users) { await db.ref(`rooms/${myRoom}/users/${uid}`).update({ image: "" }); }
+        
+        await db.ref(`rooms/${myRoom}/state`).update({
+            phase: 'drawing', drawerUid: uids[nextIndex], currentWord: word,
+            timer: 60, lastWinner: ""
+        });
+    }
+
+    async function checkAnswer() {
+        const input = document.getElementById('myAnswer');
+        if(input.value.trim() === currentWord) {
+            db.ref(`rooms/${myRoom}/users/${myUid}/score`).set(firebase.database.ServerValue.increment(10));
+            await db.ref(`rooms/${myRoom}/state`).update({ phase: 'result', lastWinner: myName });
+            input.value = "";
+            setTimeout(nextGame, 4000);
+        }
+        input.value = "";
+    }
+</script>
+</body>
+</html>
