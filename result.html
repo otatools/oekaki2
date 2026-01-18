@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>結果発表</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        body { background: #0047AB; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .box { background: rgba(255,255,255,0.2); padding: 30px; border-radius: 24px; width: 90%; max-width: 400px; text-align: center; border: 1px solid rgba(255,255,255,0.3); }
+        h1 { color: #ffcc00; font-size: 32px; }
+        .result-item { background: rgba(255,255,255,0.1); margin: 10px 0; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; }
+        .crown { font-size: 24px; }
+        .btn-home { background: #fff; color: #0047AB; border: none; padding: 15px 30px; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div class="box" id="resultBox">
+        <h1>おわり！</h1>
+        <div id="summaryText" style="font-size: 20px; margin-bottom: 20px;"></div>
+        <div id="rankingList"></div>
+        <button class="btn-home" onclick="location.href='index.html'">トップにもどる</button>
+    </div>
+
+    <script>
+        // Firebase設定
+        const config = { /* ... */ };
+        firebase.initializeApp(config);
+        const db = firebase.database();
+        const roomID = sessionStorage.getItem('quiz_room');
+
+        db.ref(`rooms/${roomID}`).once('value', snap => {
+            const data = snap.val();
+            if (!data) return;
+            const { mode, totalSolved, startTime } = data.state;
+            const users = data.users;
+
+            // タイム計算
+            const totalSec = Math.floor((Date.now() - startTime) / 1000);
+            const min = Math.floor(totalSec / 60);
+            const sec = totalSec % 60;
+
+            if (mode === 'coop') {
+                document.getElementById('summaryText').innerText = `みんなで ${totalSolved}問 クリア！\nかかったじかん: ${min}分${sec}秒`;
+            } else {
+                document.getElementById('summaryText').innerText = `個人戦の結果発表！`;
+            }
+
+            // ランキング表示
+            const sorted = Object.values(users).sort((a, b) => b.score - a.score);
+            const listDiv = document.getElementById('rankingList');
+            sorted.forEach((u, i) => {
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                const crown = i === 0 ? '👑' : (i + 1) + '.';
+                item.innerHTML = `<span>${crown} ${u.name}</span> <span>${u.score}点</span>`;
+                listDiv.appendChild(item);
+            });
+        });
+    </script>
+</body>
+</html>

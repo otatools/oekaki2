@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>入室 - お絵かきクイズ</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        body { background: #0047AB; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .box { background: rgba(255,255,255,0.2); padding: 30px; border-radius: 20px; width: 320px; text-align: center; border: 1px solid rgba(255,255,255,0.3); }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; border: none; box-sizing: border-box; font-size: 18px; }
+        .btn-enter { width: 100%; padding: 15px; background: #ffcc00; border: none; border-radius: 10px; font-size: 20px; font-weight: bold; cursor: pointer; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2 style="margin-top:0">あそびにいく</h2>
+        <input type="number" id="roomID" placeholder="へやばんごう" inputmode="numeric">
+        <input type="text" id="userName" placeholder="なまえ">
+        <button class="btn-enter" onclick="enter()">はい室する</button>
+    </div>
+
+    <script>
+        // Firebase設定を貼り付けてください
+        const config = { /* Your Config */ };
+        firebase.initializeApp(config);
+        const db = firebase.database();
+
+        async function enter() {
+            const room = document.getElementById('roomID').value;
+            const name = document.getElementById('userName').value;
+            if(!room || !name) return alert('へやばんごうとなまえを入れてね');
+            
+            const uid = btoa(encodeURIComponent(name + Date.now())).substring(0,10);
+            
+            // ユーザー登録
+            await db.ref(`rooms/${room}/users/${uid}`).set({
+                name: name,
+                score: 0,
+                image: ""
+            });
+            
+            sessionStorage.setItem('quiz_room', room);
+            sessionStorage.setItem('quiz_uid', uid);
+            sessionStorage.setItem('quiz_name', name);
+            location.href = 'play.html';
+        }
+    </script>
+</body>
+</html>
